@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+	<link rel="stylesheet" type="text/css" href="myStyle.css">
+		<title>Poznámky</title>
+
+	</head>
+	<body>
+		<div class="page">
+			<header>
+				<h1 class="heading">Poznámky</h1>
+				
+				<i id= "settings" class="fa fa-gear" style="font-size:48px"></i>
+				
+				<div id="menu-buttons">
+					<div></div>
+					<div></div>
+					<div></div>
+				</div>
+			</header>
+			<section>
+
+				<nav class="menu">
+					<div class="filters">
+						<a id="filter-all" href="#/" class="selected">Všechny</a>
+						<a id="filter-active" href="#/active" class="">Aktivní</a>
+						<a id="filter-completed" href="#/completed">Hotové</a>
+					</div>
+				</nav>
+
+				<main>
+					<section id="input">
+						<label class="container"> Úkol
+							<input type="checkbox" id="inputIsTodo">
+							<span class="checkmark"></span>
+						</label>
+						
+						<input type="text" id="inputId" autofocus autocomplete="off" placeholder="Vaše poznámka">
+						
+						
+					</section>
+					<section id="notes">
+						<ul class="notesClass"></ul>
+					</section>
+				</main>
+				
+				
+			</section>
+
+		</div>
+		<div class="modal">
+			<div class="modal-content">
+				<button class="modal-button">
+					Zavřít
+				</button>
+				<div class="buttonDiv">
+				<button id="export" class="buttons">Export poznámek</button>
+				<button id="deleteAll" class="buttons">Ostranit všechny</button>
+				</div>
+				
+				
+			</div>
+		</div>
+		
+
+
+
+
+		<script type="text/javascript">
+
+		class State{
+            constructor(initialTodos, initialFilter) {
+            this._todos = initialTodos; 
+            this._filter = initialFilter;
+			}
+
+			addTodo = function (todo) {
+				this._todos.push(todo);
+			}
+
+			setFilter = function (filter) {
+				this._filter = filter;
+			}
+
+			getTodos = function () {
+				return this._todos.filter((todo) => {
+					if (this._filter === 'all') {
+						return true;
+					} else if (this._filter === 'completed') {
+						return todo.completed === true;
+					} else if (this._filter === 'active') {
+						return todo.completed === false;
+					}
+				});
+			}
+			getAlltodos = function () {
+				return this._todos;
+			}
+
+			removeAllToodos = function () {
+				this._todos = [];
+			}
+
+			removeTodo = function (text) {
+				
+				var removed = this._todos.filter((todo) => {
+					if(todo.text == text){
+						return false;
+					}
+					else{
+						return true;
+					}
+				})
+				this._todos = removed;
+				saveToStorage();
+				setTimeout(createHtmlWithCreateElement,550, state.getTodos(), todoListEl)
+			}
+        }
+
+		
+		const state = new State([], "all");
+		loadFromStorage();
+
+		//render todos
+		function createHtmlWithCreateElement (todos, targetEl) {
+            targetEl.innerHTML = ''
+            for(const todo of todos){
+
+                // Prepare elements
+				const todoEl = document.createElement('li');
+				if(todo.isTodo){
+					const inputEl = document.createElement('input');
+					inputEl.classList.add('toggle');
+					inputEl.type = 'checkbox';
+					inputEl.checked = todo.completed;
+					todoEl.appendChild(inputEl);
+				}
+
+                const labelEl = document.createElement('label');
+                labelEl.textContent= todo.text;
+
+				if(todo.completed){
+					labelEl.style.textDecoration = "line-through"
+				}
+
+				else{
+					labelEl.style.textDecoration = "none"
+				}
+                const buttonEl = document.createElement('button');
+                buttonEl.classList.add('destroy');
+				buttonEl.textContent = "X"
+
+                // Append these elements to the todo wrapper element
+                
+                todoEl.addEventListener('dblclick', edit);
+                todoEl.appendChild(labelEl);
+                todoEl.appendChild(buttonEl);
+
+                // Append todo to the page
+                targetEl.appendChild(todoEl);
+            }
+        }
+
+
+
+		//Settings menu visibility
+		let modalVisible = false;
+		const modalButtons = document.querySelectorAll('.modal-button');
+		for (let i = 0; i < modalButtons.length; i++) {
+                modalButtons[i].addEventListener('click', toggleModalState)
+            }
+		const sett = document.getElementById("settings");
+		sett.addEventListener('click', toggleModalState);
+
+		function toggleModalState () {
+                modalVisible = !modalVisible;
+                if (modalVisible) {
+                    document.body.classList.add('modal-visible');
+                } else {
+                    document.body.classList.remove('modal-visible');
+                }
+            }
+
+
+
+		//Editing todo
+		function edit(e){
+			inputEl.value = e.target.innerText
+			var x = e.target.innerText;
+			state.removeTodo(x);
+			document.getElementById("inputId").focus()
+		}
+
+
+		//Adding todo
+		const inputEl = document.getElementById("inputId");
+		const isTodo = document.getElementById("inputIsTodo")
+
+        inputEl.addEventListener('keyup', (event) =>{
+            if (event.key !== "Enter") {
+                return;
+            }
+
+            // Update app state
+            const todo = {
+                text: inputEl.value,
+				isTodo: isTodo.checked,
+                completed: false
+            };
+
+            state.addTodo(todo);
+
+            // Update html
+            inputEl.value = '';
+            createHtmlWithCreateElement(state.getTodos(), todoListEl);
+			saveToStorage();
+        })
+
+
+		//delete or toggle todo
+		const todoListEl = document.querySelector('.notesClass')
+		createHtmlWithCreateElement(state.getTodos(), todoListEl);
+
+		document.addEventListener('click', function(e){
+  			if(e.target.classList=="destroy"){
+				  deleteSound();
+   				var x = e.target.parentNode.textContent;
+				var y = x.substring(0, x.length - 1);
+				e.target.parentNode.classList.add("remTodo");
+				state.removeTodo(y);
+ 	 		}
+			else if(e.target.classList == "toggle"){
+				var y = e.target.parentNode.textContent;
+				var x = y.substring(0, y.length - 1);
+				var todos = state.getAlltodos();
+				todos.forEach(todo => {
+					if(todo.text == x){
+						if(e.target.checked){
+							todo.completed = true;
+						}
+						else{
+							todo.completed = false;
+						}
+					}
+				});
+				saveToStorage();
+				createHtmlWithCreateElement(state.getTodos(), todoListEl);
+			}
+		})
+
+		//delete all todos
+		const destroyButton = document.getElementById("deleteAll");
+		destroyButton.addEventListener('click', (event) =>{
+			state.removeAllToodos();
+			saveToStorage();
+			createHtmlWithCreateElement(state.getTodos(), todoListEl);
+		})
+
+
+		//saving todos to local storage
+		function saveToStorage(){
+				var x = state.getAlltodos();
+				localStorage.setItem("note", JSON.stringify(x));
+		}
+
+		//loading todos from local storage
+		function loadFromStorage() {
+			var x = JSON.parse(localStorage.getItem("note"));
+			if(x != null){
+
+				x.forEach(note => {
+				state.addTodo(note);
+			});
+					}
+			
+		}
+		
+		//exporting todos
+		const expEl = document.getElementById("export")
+		expEl.addEventListener('click', function(e){
+			var x = state.getAlltodos();
+			var data = JSON.stringify(x);
+			download(data, 'BlokExport.json', 'text/plain');
+		})
+		
+		function download(content, fileName, contentType) {
+    		var a = document.createElement("a");
+			var file = new Blob([content], {type: contentType});
+			a.href = URL.createObjectURL(file);
+			a.download = fileName;
+			a.click();
+		}
+
+
+
+
+		//Importing todos from json file
+		document.addEventListener("drop", e => this.JSONImport(e));
+		document.addEventListener("dragover", e => e.preventDefault());
+
+		function JSONImport(e){
+
+					e.preventDefault();
+					const files = e.dataTransfer.files;
+					for (var i = 0, f; f = files[i]; i++) {
+						var reader = new FileReader();
+						reader.onload = (function (theFile) {
+							return function (e) {
+								try {
+									var json = JSON.parse(e.target.result);
+									if(json != null){
+										console.log(json[2]);
+										json.forEach(note => {
+											state.addTodo(note);
+										});
+										createHtmlWithCreateElement(state.getTodos(), todoListEl);
+									}
+								} catch (ex) {
+									console.log('ex when trying to parse json = ' + ex);
+								}
+							}
+						})(f);
+						reader.readAsText(f);
+					}
+					createHtmlWithCreateElement(state.getTodos(), todoListEl);
+				}
+
+
+
+
+		//handle filters
+        const filters = {
+            all: document.querySelector('#filter-all'),
+            active: document.querySelector('#filter-active'),
+            completed: document.querySelector('#filter-completed')
+        };
+
+        for (const [filterName, filterEl] of Object.entries(filters)) {
+            filterEl.addEventListener('click', () => {
+                filtersClick(filterName);
+            });
+        }
+
+        function filtersClick (newFilterType) {
+            for (const [filterName, filterEl] of Object.entries(filters)) {
+                filterEl.classList.remove('selected');
+            }
+
+            filters[newFilterType].classList.add('selected');
+
+            state.setFilter(newFilterType);
+
+            createHtmlWithCreateElement(state.getTodos(), todoListEl);
+        }
+
+
+		//side menu visibility
+		let menuVisible = false;
+		const menu = document.getElementById("menu-buttons");
+		menu.addEventListener('click', () => {
+			menuVisible = !menuVisible;
+                if (menuVisible) {
+                    document.body.classList.add('menu-visible');
+                } else {
+                    document.body.classList.remove('menu-visible');
+                }
+		})
+
+		//plays delete sound
+		var audio = new Audio('DeleteSound.mp3');
+		function deleteSound(){
+			audio.pause();
+			audio.currentTime = 0;
+  			audio.play();
+		}
+		
+
+		</script>
+	
+
+</body></html>
